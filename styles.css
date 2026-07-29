@@ -1357,7 +1357,8 @@ body[data-entry="creative"] .stat {
 
 .tg-player-card {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
@@ -1369,33 +1370,40 @@ body[data-entry="creative"] .stat {
   border-color: rgba(4, 214, 79, 0.3);
 }
 
-.tg-player-card.blocked {
+.tg-player-card.tg-blocked {
   border-color: rgba(199, 53, 50, 0.25);
   background: rgba(199, 53, 50, 0.03);
 }
 
-.tg-avatar-wrap {
+/* Top row: photo + info + signals badge */
+.tg-card-top {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tg-photo-wrap {
   position: relative;
   flex-shrink: 0;
 }
 
 .tg-photo {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--line);
 }
 
 .tg-photo-placeholder {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--brand), #1ab34a);
   color: #06100a;
   display: grid;
   place-items: center;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 780;
 }
 
@@ -1412,49 +1420,103 @@ body[data-entry="creative"] .stat {
   border: 1.5px solid #fff;
 }
 
-.tg-player-info {
-  min-width: 0;
+.tg-card-info {
   flex: 1;
+  min-width: 0;
 }
 
-.tg-name {
+.tg-player-id {
+  font-size: 22px;
   font-weight: 780;
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--brand);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  line-height: 1.1;
 }
 
-.tg-username {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 1px;
-}
-
-.tg-ids {
+.tg-player-meta {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 3px;
   font-size: 12px;
   color: var(--muted);
 }
 
-.tg-ids code {
+.tg-signals-badge {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 780;
+  color: var(--brand);
+  background: rgba(4, 214, 79, 0.12);
+  border: 1px solid rgba(4, 214, 79, 0.25);
+  border-radius: 8px;
+  padding: 4px 10px;
+  white-space: nowrap;
   font-family: "SFMono-Regular", Consolas, monospace;
-  color: var(--ink);
-  background: var(--panel);
-  padding: 1px 4px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
 }
 
-.tg-footer {
+.tg-signals-badge.empty {
+  color: var(--red);
+  background: rgba(199, 53, 50, 0.1);
+  border-color: rgba(199, 53, 50, 0.25);
+}
+
+/* Action area */
+.tg-card-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  margin-top: 8px;
+}
+
+.tg-quick-btns {
+  display: flex;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.tg-quick-btn {
+  flex: 1;
+  min-width: 44px;
+  font-size: 13px !important;
+  font-weight: 780 !important;
+  padding: 5px 8px !important;
+  min-height: 32px !important;
+  background: rgba(4, 214, 79, 0.1) !important;
+  border: 1px solid rgba(4, 214, 79, 0.2) !important;
+  color: var(--brand) !important;
+  border-radius: 6px !important;
+}
+
+.tg-quick-btn:hover {
+  background: rgba(4, 214, 79, 0.2) !important;
+  border-color: rgba(4, 214, 79, 0.4) !important;
+}
+
+.tg-quick-btn.secondary {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  color: var(--muted) !important;
+}
+
+.tg-set-limit-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tg-set-limit-row .signal-form {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.tg-set-limit-row .signal-input {
+  width: 80px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+  font-size: 13px !important;
+  padding: 4px 8px !important;
+  min-height: 30px !important;
 }
 
 .tg-without-section {
@@ -1498,10 +1560,18 @@ body[data-entry="creative"] .stat {
     grid-template-columns: 1fr;
   }
 
-  .surface-head,
+  .surface-head:not(.access-gate .surface-head),
   .split-row {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  /* Keep access-gate close button in top-right on mobile */
+  .access-gate .surface-head {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
   }
 
   .phone {
