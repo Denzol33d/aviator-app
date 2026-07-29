@@ -374,7 +374,6 @@
     const accounts = Array.isArray(raw.accounts)
       ? raw.accounts.map((a) => ({
           id: String(a.id || "").trim(),
-          // Telegram data
           telegramId: a.telegramId || null,
           telegramUsername: a.telegramUsername || null,
           telegramFirstName: a.telegramFirstName || null,
@@ -388,6 +387,7 @@
           selectedGame: a.selectedGame || "Aviator",
           history: Array.isArray(a.history) ? a.history : [],
           remainingSignals: Number.isFinite(Number(a.remainingSignals)) ? Number(a.remainingSignals) : fresh.settings.freeSignals,
+          signalLimit: Number.isFinite(Number(a.signalLimit)) ? Number(a.signalLimit) : (Number.isFinite(Number(a.remainingSignals)) ? Number(a.remainingSignals) : fresh.settings.freeSignals),
           nextCodeIndex: Number.isFinite(Number(a.nextCodeIndex)) ? Number(a.nextCodeIndex) : 0,
         }))
       : [];
@@ -514,6 +514,7 @@
       selectedGame: "Aviator",
       history: [],
       remainingSignals: Number(state.settings.freeSignals || 1),
+      signalLimit: Number(state.settings.freeSignals || 1),
       nextCodeIndex: 0,
     };
   }
@@ -787,9 +788,10 @@
     return `
       <div class="predictor-page">
         <section class="player-minibar">
-          <div>
-            <span class="muted">ID</span>
-            <strong class="mono">${esc(account.id)}</strong>
+          <button id="back-to-games" class="secondary" type="button" style="min-height:34px;padding:0 12px;font-size:13px">← Игры</button>
+          <div style="text-align:center">
+            <span class="muted" style="font-size:12px">ID</span>
+            <strong class="mono" style="display:block">${esc(account.id)}</strong>
           </div>
           <button id="player-logout" class="secondary" type="button">${buttonIcon("logOut", "Выйти")}</button>
         </section>
@@ -945,44 +947,58 @@
           <span class="status-badge">${state.accounts.length} игроков</span>
         </div>
         <div class="surface-body">
-          <div class="accounts-list">
-            ${state.accounts.map((acc) => `
-              <div class="account-row${acc.status === "blocked" ? " blocked" : ""}">
-                <div class="account-info">
-                  <div class="account-id-row">
+          <div class="tg-players-grid">
+            ${state.accounts.map((acc) => {
+              const remaining = acc.remainingSignals || 0;
+              const limit = acc.signalLimit || remaining;
+              const tgName = [acc.telegramFirstName, acc.telegramLastName].filter(Boolean).join(" ");
+              const regDate = acc.createdAt ? formatDate(acc.createdAt) : "—";
+              const isBlocked = acc.status === "blocked";
+              return `
+              <div class="tg-player-card${isBlocked ? " tg-blocked" : ""}">
+                <div class="tg-card-top">
+                  <div class="tg-photo-wrap">
                     ${acc.telegramPhotoUrl
-                      ? `<img src="${esc(acc.telegramPhotoUrl)}" class="account-tg-photo" alt=""/>`
-                      : `<div class="account-tg-placeholder">${esc((acc.telegramFirstName || acc.id)[0])}</div>`
+                      ? `<img src="${esc(acc.telegramPhotoUrl)}" class="tg-photo" alt=""/>`
+                      : `<div class="tg-photo-placeholder">${esc((acc.telegramFirstName || acc.id)[0].toUpperCase())}</div>`
                     }
-                    <div>
-                      ${acc.telegramFirstName
-                        ? `<div class="account-tg-name">${esc([acc.telegramFirstName, acc.telegramLastName].filter(Boolean).join(" "))}${acc.telegramUsername ? ` <span class="muted">@${esc(acc.telegramUsername)}</span>` : ""}</div>`
-                        : ""}
-                      <div class="account-id mono">${esc(acc.id)}</div>
-                      ${acc.telegramId ? `<div style="font-size:11px;color:var(--muted)">TG ID: ${esc(String(acc.telegramId))}</div>` : ""}
+                    ${isBlocked ? `<div class="tg-blocked-badge">БАН</div>` : ""}
+                  </div>
+                  <div class="tg-card-info">
+                    <div class="tg-player-id">${esc(acc.id)}</div>
+                    <div class="tg-player-meta">
+                      ${tgName ? `<span>${esc(tgName)}</span>` : ""}
+                      ${acc.telegramId ? `<span class="muted">tg:${esc(String(acc.telegramId))}</span>` : ""}
+                      <span class="muted">рег: ${regDate}</span>
                     </div>
                   </div>
-                  <div class="account-meta">
-                    ${statusBadge(acc.status)}
-                    <span class="signal-count-badge">${icon("target")} ${acc.remainingSignals || 0} сигналов</span>
-                    <span class="muted" style="font-size:12px">${acc.lastLoginAt ? "Вход: " + formatDate(acc.lastLoginAt) : "Не входил"}</span>
+                  <div class="tg-signals-badge${remaining <= 0 ? " empty" : ""}">
+                    ${remaining}/${limit}
                   </div>
                 </div>
-                <div class="account-actions">
-                  <form class="signal-form" data-type="signal" data-account-id="${esc(acc.id)}">
-                    <input class="input signal-input" type="number" min="1" max="999" placeholder="Кол-во" />
-                    <button type="submit" class="success">${icon("plus")}<span>Добавить</span></button>
-                    <button type="button" class="btn-plus5 secondary" data-account-id="${esc(acc.id)}">+5</button>
-                  </form>
-                  <button type="button"
-                    class="btn-toggle-block ${acc.status === "blocked" ? "success" : "danger"}"
-                    data-account-id="${esc(acc.id)}"
-                    data-action="${acc.status === "blocked" ? "unblock" : "block"}">
-                    ${acc.status === "blocked" ? buttonIcon("check", "Разблокировать") : buttonIcon("ban", "Заблокировать")}
-                  </button>
+                <div class="tg-card-actions">
+                  <div class="tg-quick-btns">
+                    <button type="button" class="btn-plus5 tg-quick-btn" data-account-id="${esc(acc.id)}">+5</button>
+                    <button type="button" class="btn-plus10 tg-quick-btn" data-account-id="${esc(acc.id)}">+10</button>
+                    <button type="button" class="btn-plus50 tg-quick-btn" data-account-id="${esc(acc.id)}">+50</button>
+                    <button type="button" class="btn-reset-used tg-quick-btn secondary" data-account-id="${esc(acc.id)}" title="Восстановить до лимита">↺ Reset</button>
+                  </div>
+                  <div class="tg-set-limit-row">
+                    <form class="signal-form" data-type="set-limit" data-account-id="${esc(acc.id)}">
+                      <input class="input signal-input" type="number" min="1" max="9999" placeholder="Новый лимит" />
+                      <button type="submit" class="secondary" style="font-size:12px;padding:4px 10px">Set limit</button>
+                    </form>
+                    <button type="button"
+                      class="btn-toggle-block ${isBlocked ? "success" : "danger"}"
+                      data-account-id="${esc(acc.id)}"
+                      data-action="${isBlocked ? "unblock" : "block"}"
+                      style="font-size:12px;padding:4px 10px">
+                      ${isBlocked ? "Разблок" : "Блок"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            `).join("")}
+              </div>`;
+            }).join("")}
           </div>
         </div>
       </div>`;
@@ -1237,14 +1253,39 @@
       event.preventDefault();
       const accountId = form.dataset.accountId;
       const input = form.querySelector(".signal-input");
-      const amount = clamp(toNumber(input ? input.value : 0, 0), 1, 999);
+      const amount = clamp(toNumber(input ? input.value : 0, 0), 1, 9999);
       if (!amount) { toast("Введите количество."); return; }
       mutate((state) => {
         const acc = state.accounts.find((a) => a.id === accountId);
-        if (acc) { acc.remainingSignals = (acc.remainingSignals || 0) + amount; acc.updatedAt = now(); }
+        if (acc) {
+          acc.remainingSignals = (acc.remainingSignals || 0) + amount;
+          acc.signalLimit = (acc.signalLimit || 0) + amount;
+          acc.updatedAt = now();
+        }
       });
       if (input) input.value = "";
       toast(`Добавлено ${amount} сигналов.`);
+      return;
+    }
+
+    // Set limit form
+    if (form.dataset.type === "set-limit") {
+      event.preventDefault();
+      const accountId = form.dataset.accountId;
+      const input = form.querySelector(".signal-input");
+      const newLimit = clamp(toNumber(input ? input.value : 0, 0), 1, 9999);
+      if (!newLimit) { toast("Введите лимит."); return; }
+      mutate((state) => {
+        const acc = state.accounts.find((a) => a.id === accountId);
+        if (acc) {
+          acc.signalLimit = newLimit;
+          // If remaining > new limit, cap it
+          if ((acc.remainingSignals || 0) > newLimit) acc.remainingSignals = newLimit;
+          acc.updatedAt = now();
+        }
+      });
+      if (input) input.value = "";
+      toast(`Лимит установлен: ${newLimit} сигналов.`);
       return;
     }
 
@@ -1256,6 +1297,16 @@
 
       // Grab Telegram user data if available
       const tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+
+      // One TG account per game ID — block if this TG ID is already registered to a different game ID
+      if (tgUser && tgUser.id) {
+        const tgIdStr = String(tgUser.id);
+        const existing = state.accounts.find((a) => a.telegramId === tgIdStr && a.id !== id);
+        if (existing) {
+          toast("Этот Telegram уже зарегистрирован на другом ID (" + existing.id + ").");
+          return;
+        }
+      }
 
       let account = state.accounts.find((a) => a.id === id);
       if (!account) {
@@ -1329,14 +1380,33 @@
       return;
     }
 
-    // +5 signals button
-    if (target.classList.contains("btn-plus5")) {
+    // Quick +N signal buttons
+    if (target.classList.contains("btn-plus5") || target.classList.contains("btn-plus10") || target.classList.contains("btn-plus50")) {
+      const accountId = target.dataset.accountId;
+      const amount = target.classList.contains("btn-plus50") ? 50 : target.classList.contains("btn-plus10") ? 10 : 5;
+      mutate((state) => {
+        const acc = state.accounts.find((a) => a.id === accountId);
+        if (acc) {
+          acc.remainingSignals = (acc.remainingSignals || 0) + amount;
+          acc.signalLimit = (acc.signalLimit || 0) + amount;
+          acc.updatedAt = now();
+        }
+      });
+      toast(`Добавлено ${amount} сигналов.`);
+      return;
+    }
+
+    // Reset used — restore remaining to current limit
+    if (target.classList.contains("btn-reset-used")) {
       const accountId = target.dataset.accountId;
       mutate((state) => {
         const acc = state.accounts.find((a) => a.id === accountId);
-        if (acc) { acc.remainingSignals = (acc.remainingSignals || 0) + 5; acc.updatedAt = now(); }
+        if (acc) {
+          acc.remainingSignals = acc.signalLimit || acc.remainingSignals || 0;
+          acc.updatedAt = now();
+        }
       });
-      toast("Добавлено 5 сигналов.");
+      toast("Сигналы восстановлены до лимита.");
       return;
     }
 
@@ -1349,6 +1419,12 @@
         if (acc) { acc.status = action === "block" ? "blocked" : "active"; acc.updatedAt = now(); }
       });
       toast(action === "block" ? "Игрок заблокирован." : "Игрок разблокирован.");
+      return;
+    }
+
+    if (target.id === "back-to-games") {
+      playerGameChosen = false;
+      render();
       return;
     }
 
